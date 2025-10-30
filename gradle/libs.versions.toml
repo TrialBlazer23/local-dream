@@ -15,6 +15,10 @@ datastore = "1.1.7"
 material3-xml = "1.12.0"
 coil-compose = "2.4.0"
 cropify = "0.5.1"
+room = "2.6.1"
+ksp = "1.9.0-1.0.13"
+gson = "2.10.1"
+kotlinx-serialization = "1.6.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,7 +43,14 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 material3-xml = { group = "com.google.android.material", name = "material", version.ref = "material3-xml" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil-compose" }
 cropify = { module = "com.github.MoyuruAizawa:cropify", version.ref = "cropify" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

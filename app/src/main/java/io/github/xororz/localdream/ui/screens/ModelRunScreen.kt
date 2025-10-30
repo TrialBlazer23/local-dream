@@ -120,6 +120,16 @@ import kotlinx.coroutines.Job
 import io.github.xororz.localdream.utils.performUpscale
 import io.github.xororz.localdream.utils.saveImage
 import io.github.xororz.localdream.utils.reportImage
+import io.github.xororz.localdream.data.database.GenerationRepository
+import io.github.xororz.localdream.data.ParameterPresets
+import io.github.xororz.localdream.data.ParameterPreset
+import io.github.xororz.localdream.data.database.RecentPromptsManager
+import io.github.xororz.localdream.data.database.RecentPrompt
+import io.github.xororz.localdream.data.BatchQueueManager
+import io.github.xororz.localdream.data.BatchQueueItem
+import io.github.xororz.localdream.data.BatchItemStatus
+import io.github.xororz.localdream.ui.dialogs.BatchQueueDialog
+import io.github.xororz.localdream.ui.dialogs.AddVariationsDialog
 
 
 private fun checkStoragePermission(context: Context): Boolean {
@@ -216,6 +226,11 @@ fun ModelRunScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val generationPreferences = remember { GenerationPreferences(context) }
+    val generationRepository = remember { GenerationRepository(context) }
+    val recentPromptsManager = remember { RecentPromptsManager(context) }
+    val recentPrompts by recentPromptsManager.recentPrompts.collectAsState(initial = emptyList())
+    val batchQueueManager = remember { BatchQueueManager() }
+    val batchQueueState by batchQueueManager.queueState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     val modelRepository = remember { ModelRepository(context) }
@@ -301,6 +316,10 @@ fun ModelRunScreen(
     val upscalerRepository = remember { UpscalerRepository(context) }
     val upscalerPreferences =
         remember { context.getSharedPreferences("upscaler_prefs", Context.MODE_PRIVATE) }
+
+    // Batch queue related states
+    var showBatchQueueDialog by remember { mutableStateOf(false) }
+    var showAddVariationsDialog by remember { mutableStateOf(false) }
 
     fun saveAllFields() {
         saveAllJob?.cancel()
@@ -683,6 +702,34 @@ fun ModelRunScreen(
                     generationTime = genTime
                     generationStartTime = null
 
+                    // Save to history database
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            generationRepository.saveGeneration(
+                                bitmap = state.bitmap,
+                                prompt = generationParamsTmp.prompt,
+                                negativePrompt = generationParamsTmp.negativePrompt,
+                                modelId = modelId,
+                                modelName = model?.name ?: "Unknown",
+                                steps = generationParamsTmp.steps,
+                                cfg = generationParamsTmp.cfg,
+                                seed = returnedSeed ?: 0L,
+                                width = if (model?.runOnCpu == true) generationParamsTmp.size else resolution ?: 512,
+                                height = if (model?.runOnCpu == true) generationParamsTmp.size else resolution ?: 512,
+                                runtime = if (generationParamsTmp.runOnCpu) {
+                                    if (generationParamsTmp.useOpenCL) "GPU" else "CPU"
+                                } else "NPU",
+                                generationTime = genTime,
+                                denoiseStrength = generationParamsTmp.denoiseStrength,
+                                inputImagePath = generationParamsTmp.inputImage,
+                                isInpaintMode = isInpaintMode
+                            )
+                            android.util.Log.d("ModelRunScreen", "Saved to history database")
+                        } catch (e: Exception) {
+                            android.util.Log.e("ModelRunScreen", "Failed to save to history", e)
+                        }
+                    }
+
                     if (pagerState.currentPage != 1) {
                         pagerState.animateScrollToPage(1)
                     }
@@ -800,6 +847,65 @@ fun ModelRunScreen(
         )
     }
 
+    // Batch queue dialog
+    if (showBatchQueueDialog) {
+        BatchQueueDialog(
+            queueState = batchQueueState,
+            onDismiss = { showBatchQueueDialog = false },
+            onRemoveItem = { itemId ->
+                batchQueueManager.removeItem(itemId)
+            },
+            onClearQueue = {
+                batchQueueManager.clearQueue()
+            },
+            onStartBatch = {
+                batchQueueManager.setProcessing(true)
+                scope.launch {
+                    processBatchQueue(
+                        context = context,
+                        batchQueueManager = batchQueueManager,
+                        modelId = modelId,
+                        resolution = resolution,
+                        useOpenCL = useOpenCL,
+                        onComplete = {
+                            batchQueueManager.setProcessing(false)
+                        }
+                    )
+                }
+            },
+            onStopBatch = {
+                batchQueueManager.setProcessing(false)
+            }
+        )
+    }
+    
+    // Add variations dialog
+    if (showAddVariationsDialog) {
+        AddVariationsDialog(
+            onDismiss = { showAddVariationsDialog = false },
+            onConfirm = { count ->
+                val items = (1..count).map {
+                    BatchQueueItem(
+                        prompt = prompt,
+                        negativePrompt = negativePrompt,
+                        steps = steps.toInt(),
+                        cfg = cfg,
+                        seed = System.currentTimeMillis() + it,
+                        width = size,
+                        height = size,
+                        denoiseStrength = if (selectedImageUri != null) denoiseStrength else null
+                    )
+                }
+                batchQueueManager.addItems(items)
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.added_to_batch),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        )
+    }
+
     LaunchedEffect(Unit) {
         checkBackendHealth(
             backendState = BackendService.backendState,
@@ -859,6 +965,24 @@ fun ModelRunScreen(
                     ),
                     scrollBehavior = scrollBehavior,
                     actions = {
+                        // Batch queue button with badge
+                        BadgedBox(
+                            badge = {
+                                if (batchQueueState.items.isNotEmpty()) {
+                                    Badge {
+                                        Text("${batchQueueState.items.size}")
+                                    }
+                                }
+                            }
+                        ) {
+                            IconButton(onClick = { showBatchQueueDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.QueuePlayNext,
+                                    contentDescription = stringResource(R.string.batch_queue)
+                                )
+                            }
+                        }
+                        
                         Row {
                             TextButton(
                                 onClick = {
@@ -1188,6 +1312,96 @@ fun ModelRunScreen(
                                             }
                                         }
 
+                                        // Quality Presets
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                stringResource(R.string.quality_presets),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                ParameterPresets.ALL_PRESETS.forEach { preset ->
+                                                    val isSelected = steps.roundToInt() == preset.steps && 
+                                                                    kotlin.math.abs(cfg - preset.cfg) < 0.1f
+                                                    FilterChip(
+                                                        selected = isSelected,
+                                                        onClick = {
+                                                            steps = preset.steps.toFloat()
+                                                            cfg = preset.cfg
+                                                            saveAllFields()
+                                                        },
+                                                        label = { 
+                                                            Column(
+                                                                horizontalAlignment = Alignment.CenterHorizontally
+                                                            ) {
+                                                                Text(
+                                                                    preset.icon,
+                                                                    style = MaterialTheme.typography.titleMedium
+                                                                )
+                                                                Text(
+                                                                    preset.name,
+                                                                    style = MaterialTheme.typography.labelSmall
+                                                                )
+                                                            }
+                                                        },
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                }
+                                            }
+                                            Text(
+                                                stringResource(R.string.quality_presets_hint),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                            )
+                                        }
+
+                                        // Recent Prompts Button
+                                        if (recentPrompts.isNotEmpty()) {
+                                            var showRecentPrompts by remember { mutableStateOf(false) }
+                                            
+                                            OutlinedButton(
+                                                onClick = { showRecentPrompts = true },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.History,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(stringResource(R.string.recent_prompts, recentPrompts.size))
+                                            }
+                                            
+                                            if (showRecentPrompts) {
+                                                RecentPromptsDialog(
+                                                    recentPrompts = recentPrompts,
+                                                    onDismiss = { showRecentPrompts = false },
+                                                    onSelectPrompt = { recentPrompt ->
+                                                        prompt = recentPrompt.prompt
+                                                        negativePrompt = recentPrompt.negativePrompt
+                                                        saveAllFields()
+                                                        showRecentPrompts = false
+                                                    },
+                                                    onDeletePrompt = { recentPrompt ->
+                                                        scope.launch {
+                                                            recentPromptsManager.removePrompt(recentPrompt)
+                                                        }
+                                                    },
+                                                    onClearAll = {
+                                                        scope.launch {
+                                                            recentPromptsManager.clearAll()
+                                                        }
+                                                        showRecentPrompts = false
+                                                    }
+                                                )
+                                            }
+                                        }
+
                                         var expandedPrompt by remember { mutableStateOf(false) }
                                         var expandedNegativePrompt by remember {
                                             mutableStateOf(
@@ -1301,6 +1515,12 @@ fun ModelRunScreen(
                                                     "ModelRunScreen",
                                                     "start service"
                                                 )
+                                                
+                                                // Save to recent prompts
+                                                scope.launch {
+                                                    recentPromptsManager.addPrompt(prompt, negativePrompt)
+                                                }
+                                                
                                                 context.startForegroundService(intent)
                                                 android.util.Log.d(
                                                     "ModelRunScreen",
@@ -1318,6 +1538,57 @@ fun ModelRunScreen(
                                                 )
                                             } else {
                                                 Text(stringResource(R.string.generate_image))
+                                            }
+                                        }
+                                        
+                                        // Batch generation buttons
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val item = BatchQueueItem(
+                                                        prompt = prompt,
+                                                        negativePrompt = negativePrompt,
+                                                        steps = steps.toInt(),
+                                                        cfg = cfg,
+                                                        seed = seed.toLongOrNull() ?: System.currentTimeMillis(),
+                                                        width = size,
+                                                        height = size,
+                                                        denoiseStrength = if (selectedImageUri != null) denoiseStrength else null
+                                                    )
+                                                    batchQueueManager.addItem(item)
+                                                    Toast.makeText(
+                                                        context,
+                                                        context.getString(R.string.added_to_batch),
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                },
+                                                enabled = serviceState !is GenerationState.Progress && !isUpscaling,
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.PlaylistAdd,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(stringResource(R.string.add_to_batch))
+                                            }
+                                            
+                                            OutlinedButton(
+                                                onClick = { showAddVariationsDialog = true },
+                                                enabled = serviceState !is GenerationState.Progress && !isUpscaling,
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.AutoAwesome,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(stringResource(R.string.add_variations))
                                             }
                                         }
                                     }
@@ -2391,5 +2662,243 @@ fun UpscalerModelCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun RecentPromptsDialog(
+    recentPrompts: List<RecentPrompt>,
+    onDismiss: () -> Unit,
+    onSelectPrompt: (RecentPrompt) -> Unit,
+    onDeletePrompt: (RecentPrompt) -> Unit,
+    onClearAll: () -> Unit
+) {
+    val dateFormat = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }
+    var showClearConfirm by remember { mutableStateOf(false) }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.8f)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(R.string.recent_prompts_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row {
+                        if (recentPrompts.isNotEmpty()) {
+                            TextButton(onClick = { showClearConfirm = true }) {
+                                Text(stringResource(R.string.clear_all))
+                            }
+                        }
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+                }
+                
+                Divider()
+                
+                // List
+                if (recentPrompts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.History,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+                            Text(
+                                stringResource(R.string.no_recent_prompts),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(recentPrompts.size) { index ->
+                            val recentPrompt = recentPrompts[index]
+                            
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { onSelectPrompt(recentPrompt) }
+                                            .padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                dateFormat.format(Date(recentPrompt.timestamp)),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        
+                                        Text(
+                                            recentPrompt.prompt,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        
+                                        if (recentPrompt.negativePrompt.isNotBlank()) {
+                                            Text(
+                                                "Negative: ${recentPrompt.negativePrompt}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                    
+                                    IconButton(
+                                        onClick = { onDeletePrompt(recentPrompt) },
+                                        modifier = Modifier.padding(8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if (showClearConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirm = false },
+            title = { Text(stringResource(R.string.clear_all_prompts)) },
+            text = { Text(stringResource(R.string.clear_all_prompts_confirm)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onClearAll()
+                        showClearConfirm = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(stringResource(R.string.clear_all))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+}
+
+// Batch queue processing function
+private suspend fun processBatchQueue(
+    context: Context,
+    batchQueueManager: BatchQueueManager,
+    modelId: String,
+    resolution: Int,
+    useOpenCL: Boolean,
+    onComplete: () -> Unit
+) {
+    while (batchQueueManager.queueState.value.isProcessing) {
+        val nextItem = batchQueueManager.getNextPendingItem()
+        
+        if (nextItem == null) {
+            // No more pending items, finish
+            onComplete()
+            break
+        }
+        
+        // Mark as processing
+        batchQueueManager.updateItemStatus(nextItem.id, BatchItemStatus.PROCESSING)
+        
+        try {
+            // Start the generation service
+            val intent = Intent(context, BackgroundGenerationService::class.java).apply {
+                action = BackgroundGenerationService.ACTION_START_GENERATION
+                putExtra("model_id", modelId)
+                putExtra("resolution", resolution)
+                putExtra("prompt", nextItem.prompt)
+                putExtra("negative_prompt", nextItem.negativePrompt)
+                putExtra("steps", nextItem.steps)
+                putExtra("cfg", nextItem.cfg)
+                putExtra("seed", nextItem.seed)
+                putExtra("size", nextItem.width)
+                putExtra("use_opencl", useOpenCL)
+                nextItem.denoiseStrength?.let {
+                    putExtra("denoise_strength", it)
+                }
+            }
+            
+            context.startForegroundService(intent)
+            
+            // Wait for generation to complete
+            BackgroundGenerationService.generationState.collect { state ->
+                when (state) {
+                    is GenerationState.Success -> {
+                        batchQueueManager.updateItemStatus(nextItem.id, BatchItemStatus.COMPLETED)
+                        return@collect
+                    }
+                    is GenerationState.Error -> {
+                        batchQueueManager.updateItemStatus(nextItem.id, BatchItemStatus.FAILED)
+                        return@collect
+                    }
+                    else -> {
+                        // Continue waiting
+                    }
+                }
+            }
+            
+        } catch (e: Exception) {
+            // Mark as failed
+            batchQueueManager.updateItemStatus(nextItem.id, BatchItemStatus.FAILED)
+        }
+        
+        // Small delay between generations
+        delay(500)
     }
 }

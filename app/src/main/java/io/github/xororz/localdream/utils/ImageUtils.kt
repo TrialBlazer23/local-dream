@@ -13,6 +13,7 @@ import io.github.xororz.localdream.data.Model
 import io.github.xororz.localdream.ui.screens.GenerationParameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -213,24 +214,39 @@ suspend fun saveImage(
                 "Start saving image - size: ${bitmap.width}x${bitmap.height}"
             )
 
-            // Save as JPEG if width or height is greater than 1024, otherwise save as PNG
-            val isLargeImage = bitmap.width > 1024 || bitmap.height > 1024
-            val format = if (isLargeImage) Bitmap.CompressFormat.JPEG else Bitmap.CompressFormat.PNG
-            val extension = if (isLargeImage) "jpg" else "png"
-            val mimeType = if (isLargeImage) "image/jpeg" else "image/png"
-            val quality = if (isLargeImage) 95 else 100
+            // Get export settings
+            val exportPreferences = io.github.xororz.localdream.data.ExportPreferences(context)
+            val exportSettings = exportPreferences.exportSettings.first()
+            
+            // Use export settings for format and quality
+            val format = when (exportSettings.format) {
+                io.github.xororz.localdream.data.ImageFormat.PNG -> Bitmap.CompressFormat.PNG
+                io.github.xororz.localdream.data.ImageFormat.JPEG -> Bitmap.CompressFormat.JPEG
+                io.github.xororz.localdream.data.ImageFormat.WEBP -> 
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        Bitmap.CompressFormat.WEBP_LOSSY
+                    } else {
+                        @Suppress("DEPRECATION")
+                        Bitmap.CompressFormat.WEBP
+                    }
+            }
+            
+            val extension = exportSettings.format.extension
+            val mimeType = exportSettings.format.mimeType
+            val quality = if (exportSettings.format == io.github.xororz.localdream.data.ImageFormat.PNG) 100 else exportSettings.quality
 
-            android.util.Log.d("SaveImage", "Save format: ${if (isLargeImage) "JPEG" else "PNG"}")
+            android.util.Log.d("SaveImage", "Save format: ${exportSettings.format.name}, quality: $quality")
 
             val timestamp = System.currentTimeMillis()
             val filename = "generated_image_$timestamp.$extension"
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10 MediaStore API
+                // Android 10+ MediaStore API
                 val contentValues = ContentValues().apply {
                     put(MediaStore.Images.Media.DISPLAY_NAME, filename)
                     put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+                    put(MediaStore.Images.Media.RELATIVE_PATH, 
+                        exportSettings.customFolderPath ?: "${Environment.DIRECTORY_PICTURES}/LocalDream")
                 }
 
                 val resolver = context.contentResolver

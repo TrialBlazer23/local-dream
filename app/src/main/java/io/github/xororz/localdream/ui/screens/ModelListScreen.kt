@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.xororz.localdream.data.*
 import io.github.xororz.localdream.navigation.Screen
+import io.github.xororz.localdream.ui.dialogs.ThemeSettingsDialog
+import io.github.xororz.localdream.ui.dialogs.ExportSettingsDialog
 import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -618,6 +620,12 @@ fun ModelListScreen(
                             Icon(Icons.Default.Delete, stringResource(R.string.delete))
                         }
                     }
+                    IconButton(onClick = { navController.navigate(Screen.History.route) }) {
+                        Icon(Icons.Default.History, stringResource(R.string.generation_history))
+                    }
+                    IconButton(onClick = { navController.navigate(Screen.PromptLibrary.route) }) {
+                        Icon(Icons.Default.Bookmark, stringResource(R.string.prompt_library))
+                    }
                     IconButton(onClick = { showHelpDialog = true }) {
                         Icon(Icons.AutoMirrored.Filled.Help, stringResource(R.string.help))
                     }
@@ -962,6 +970,166 @@ fun ModelListScreen(
                                     )
                                 }
                             }
+                        }
+                    }
+
+                    // Theme settings section
+                    item {
+                        var showThemeDialog by remember { mutableStateOf(false) }
+                        
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Palette,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    stringResource(R.string.theme_settings),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            
+                            Card(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { showThemeDialog = true }
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.appearance),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            stringResource(R.string.customize_theme),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                        
+                        if (showThemeDialog) {
+                            ThemeSettingsDialog(
+                                onDismiss = { showThemeDialog = false }
+                            )
+                        }
+                    }
+
+                    // Export settings section
+                    item {
+                        var showExportDialog by remember { mutableStateOf(false) }
+                        
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Save,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    stringResource(R.string.export_settings),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            
+                            Card(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { showExportDialog = true }
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.image_format),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            stringResource(R.string.custom_folder_hint),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                        
+                        if (showExportDialog) {
+                            val exportPreferences = remember { ExportPreferences(LocalContext.current) }
+                            val exportSettings by exportPreferences.exportSettings.collectAsState(
+                                initial = ExportSettings()
+                            )
+                            val scope = rememberCoroutineScope()
+                            
+                            ExportSettingsDialog(
+                                currentSettings = exportSettings,
+                                onDismiss = { showExportDialog = false },
+                                onUpdateFormat = { format ->
+                                    scope.launch {
+                                        exportPreferences.updateFormat(format)
+                                    }
+                                },
+                                onUpdateQuality = { quality ->
+                                    scope.launch {
+                                        exportPreferences.updateQuality(quality)
+                                    }
+                                },
+                                onUpdateCustomFolder = { path ->
+                                    scope.launch {
+                                        exportPreferences.updateCustomFolder(path)
+                                    }
+                                },
+                                onUpdateIncludeMetadata = { include ->
+                                    scope.launch {
+                                        exportPreferences.updateIncludeMetadata(include)
+                                    }
+                                },
+                                onUpdateAutoSave = { autoSave ->
+                                    scope.launch {
+                                        exportPreferences.updateAutoSave(autoSave)
+                                    }
+                                }
+                            )
                         }
                     }
 

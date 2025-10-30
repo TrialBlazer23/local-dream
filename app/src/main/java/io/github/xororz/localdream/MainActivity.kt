@@ -21,9 +21,16 @@ import io.github.xororz.localdream.navigation.Screen
 import io.github.xororz.localdream.ui.screens.ModelListScreen
 import io.github.xororz.localdream.ui.screens.ModelRunScreen
 import io.github.xororz.localdream.ui.screens.UpscaleScreen
+import io.github.xororz.localdream.ui.screens.HistoryScreen
+import io.github.xororz.localdream.ui.screens.PromptLibraryScreen
 import io.github.xororz.localdream.ui.theme.LocalDreamTheme
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
+import io.github.xororz.localdream.data.ThemePreferences
+import io.github.xororz.localdream.data.AppTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 
 class MainActivity : ComponentActivity() {
     private val requestStoragePermissionLauncher = registerForActivityResult(
@@ -112,7 +119,14 @@ class MainActivity : ComponentActivity() {
         checkNotificationPermission()
 
         setContent {
-            LocalDreamTheme {
+            val themePreferences = remember { ThemePreferences(this) }
+            val currentTheme by themePreferences.currentTheme.collectAsState(initial = AppTheme.SYSTEM)
+            val useDynamicColor by themePreferences.useDynamicColor.collectAsState(initial = true)
+            
+            LocalDreamTheme(
+                appTheme = currentTheme,
+                dynamicColor = useDynamicColor
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -149,6 +163,12 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(Screen.Upscale.route) {
                             UpscaleScreen(navController)
+                        }
+                        composable(Screen.History.route) {
+                            HistoryScreen(navController)
+                        }
+                        composable(Screen.PromptLibrary.route) {
+                            PromptLibraryScreen(navController)
                         }
                     }
                 }

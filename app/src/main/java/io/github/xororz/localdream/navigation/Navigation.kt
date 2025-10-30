@@ -11,4 +11,6 @@ sealed class Screen(val route: String) {
             }
     }
     object Upscale : Screen("upscale")
+    object History : Screen("history")
+    object PromptLibrary : Screen("prompt_library")
 }

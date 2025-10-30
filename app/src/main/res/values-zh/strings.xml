@@ -210,4 +210,103 @@
     <string name="click_to_add_image">点击添加需要超分辨率的图像</string>
     <string name="image_resolution_too_large">图像分辨率过大 (%1$d×%2$d)，请选择小于 2048x2048 的图像</string>
     <string name="failed_to_load_image">加载图像失败: %s</string>
+
+    <!-- History & Library -->
+    <string name="generation_history">生成历史</string>
+    <string name="search_history">搜索历史…</string>
+    <string name="total_generations">总数</string>
+    <string name="favorites">收藏</string>
+    <string name="no_history">暂无生成历史</string>
+    <string name="no_history_hint">您生成的图像将显示在这里</string>
+    <string name="delete_generation">删除生成</string>
+    <string name="delete_generation_confirm">确定要删除此生成吗？</string>
+    <string name="generation_info">生成信息</string>
+    <string name="parameters">参数</string>
+    <string name="use_these_parameters">使用这些参数</string>
+    <string name="share_image">分享图片</string>
+    <string name="copy_parameters">复制参数</string>
+    <string name="parameters_copied">参数已复制到剪贴板</string>
+    <string name="share_failed">分享图片失败</string>
+
+    <!-- Prompt Library -->
+    <string name="prompt_library">提示词库</string>
+    <string name="search_presets">搜索预设…</string>
+    <string name="no_presets">暂无提示词预设</string>
+    <string name="no_presets_hint">创建预设以保存您最喜欢的提示词</string>
+    <string name="create_preset">创建预设</string>
+    <string name="edit_preset">编辑预设</string>
+    <string name="delete_preset">删除预设</string>
+    <string name="delete_preset_confirm">确定要删除此预设吗？</string>
+    <string name="preset_name">预设名称</string>
+    <string name="category">分类</string>
+    <string name="apply_preset">应用预设</string>
+    <string name="save_as_preset">保存为预设</string>
+
+    <!-- Quality Presets -->
+    <string name="quality_presets">质量预设</string>
+    <string name="quality_presets_hint">不同质量级别的快速设置</string>
+    <string name="preset_draft">草稿</string>
+    <string name="preset_standard">标准</string>
+    <string name="preset_high">高质量</string>
+    <string name="preset_ultra">超高质量</string>
+
+    <!-- Recent Prompts -->
+    <string name="recent_prompts">最近提示词 (%d)</string>
+    <string name="recent_prompts_title">最近提示词</string>
+    <string name="no_recent_prompts">暂无最近提示词</string>
+    <string name="clear_all">清除全部</string>
+    <string name="clear_all_prompts">清除所有提示词</string>
+    <string name="clear_all_prompts_confirm">确定要清除所有最近提示词吗？</string>
+
+    <!-- Theme Settings -->
+    <string name="theme_settings">主题设置</string>
+    <string name="appearance">外观</string>
+    <string name="customize_theme">自定义应用主题和颜色</string>
+    <string name="theme">主题</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_light_desc">明亮颜色的浅色主题</string>
+    <string name="theme_dark">深色</string>
+    <string name="theme_dark_desc">柔和颜色的深色主题</string>
+    <string name="theme_amoled">AMOLED</string>
+    <string name="theme_amoled_desc">OLED显示屏的纯黑主题</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_system_desc">跟随系统主题设置</string>
+    <string name="dynamic_color">动态颜色</string>
+    <string name="dynamic_color_desc">使用壁纸的颜色 (Android 12+)</string>
+    
+    <!-- Batch Generation -->
+    <string name="batch_queue">批量队列</string>
+    <string name="batch_progress">进度: %1$d / %2$d</string>
+    <string name="no_batch_items">队列中没有项目</string>
+    <string name="no_batch_items_hint">添加项目以生成多张图片</string>
+    <string name="start_batch">开始批量生成</string>
+    <string name="stop_batch">停止批量生成</string>
+    <string name="clear_queue">清空队列</string>
+    <string name="add_to_batch">添加到批量</string>
+    <string name="add_current_to_batch">添加当前设置到批量</string>
+    <string name="add_variations">添加变体</string>
+    <string name="variation_count">变体数量</string>
+    <string name="variation_count_hint">使用随机种子生成多张图片</string>
+    <string name="added_to_batch">已添加到批量队列</string>
+    
+    <!-- Export Settings -->
+    <string name="export_settings">导出设置</string>
+    <string name="image_format">图片格式</string>
+    <string name="image_quality">图片质量</string>
+    <string name="lower_quality">较小体积</string>
+    <string name="higher_quality">较高质量</string>
+    <string name="save_location">保存位置</string>
+    <string name="custom_folder">自定义文件夹</string>
+    <string name="select_custom_folder">选择自定义文件夹</string>
+    <string name="change_folder">更换文件夹</string>
+    <string name="custom_folder_hint">默认: 图片/LocalDream。选择自定义文件夹以保存到其他位置。</string>
+    <string name="additional_options">其他选项</string>
+    <string name="include_metadata">包含元数据</string>
+    <string name="include_metadata_desc">在图片元数据中保存生成参数</string>
+    <string name="auto_save_images">自动保存图片</string>
+    <string name="auto_save_images_desc">生成完成后自动保存图片</string>
+    <string name="format_png_desc">无损压缩，文件较大</string>
+    <string name="format_jpeg_desc">有损压缩，文件较小</string>
+    <string name="format_webp_desc">现代格式，压缩率最佳</string>
 </resources>
+```
