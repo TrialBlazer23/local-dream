@@ -255,7 +255,6 @@
     <string name="clear_all">Clear All</string>
     <string name="clear_all_prompts">Clear All Prompts</string>
     <string name="clear_all_prompts_confirm">Are you sure you want to clear all recent prompts?</string>
-</resources>
     
     <!-- Theme Settings -->
     <string name="theme_settings">Theme Settings</string>
@@ -307,6 +306,4 @@
     <string name="format_png_desc">Lossless compression, larger file size</string>
     <string name="format_jpeg_desc">Lossy compression, smaller file size</string>
     <string name="format_webp_desc">Modern format, best compression</string>
-</resources>
-```
 </resources>
