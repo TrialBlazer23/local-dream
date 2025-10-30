@@ -309,4 +309,3 @@
     <string name="format_jpeg_desc">有损压缩，文件较小</string>
     <string name="format_webp_desc">现代格式，压缩率最佳</string>
 </resources>
-```
