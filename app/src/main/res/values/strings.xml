@@ -261,6 +261,7 @@
     <string name="appearance">Appearance</string>
     <string name="customize_theme">Customize app theme and colors</string>
     <string name="theme">Theme</string>
+    <string name="theme_mode">Theme Mode</string>
     <string name="theme_light">Light</string>
     <string name="theme_light_desc">Light theme with bright colors</string>
     <string name="theme_dark">Dark</string>

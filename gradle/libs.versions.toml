@@ -1,6 +1,6 @@
 [versions]
 agp = "8.6.0"
-kotlin = "1.9.22"
+kotlin = "2.0.0"
 coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -16,9 +16,9 @@ material3-xml = "1.12.0"
 coil-compose = "2.4.0"
 cropify = "0.5.1"
 room = "2.6.1"
-ksp = "1.9.22-1.0.17"
+ksp = "2.0.0-1.0.21"
 gson = "2.10.1"
-kotlinx-serialization = "1.6.0"
+kotlinx-serialization = "1.7.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

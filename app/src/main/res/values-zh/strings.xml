@@ -263,6 +263,7 @@
     <string name="appearance">外观</string>
     <string name="customize_theme">自定义应用主题和颜色</string>
     <string name="theme">主题</string>
+    <string name="theme_mode">主题模式</string>
     <string name="theme_light">浅色</string>
     <string name="theme_light_desc">明亮颜色的浅色主题</string>
     <string name="theme_dark">深色</string>
