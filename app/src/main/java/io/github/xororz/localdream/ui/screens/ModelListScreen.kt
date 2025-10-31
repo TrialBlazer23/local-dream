@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.xororz.localdream.data.*
 import io.github.xororz.localdream.navigation.Screen
-import io.github.xororz.localdream.ui.dialogs.ThemeSettingsDialog
+import io.github.xororz.localdream.ui.components.ThemeSettingsDialog
 import io.github.xororz.localdream.ui.dialogs.ExportSettingsDialog
 import kotlinx.coroutines.launch
 import java.text.DecimalFormat

@@ -49,6 +49,11 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
 import java.util.Base64
 import java.util.Scanner
 import java.util.concurrent.TimeUnit
@@ -2859,7 +2864,6 @@ private suspend fun processBatchQueue(
         try {
             // Start the generation service
             val intent = Intent(context, BackgroundGenerationService::class.java).apply {
-                action = BackgroundGenerationService.ACTION_START_GENERATION
                 putExtra("model_id", modelId)
                 putExtra("resolution", resolution)
                 putExtra("prompt", nextItem.prompt)
@@ -2879,7 +2883,7 @@ private suspend fun processBatchQueue(
             // Wait for generation to complete
             BackgroundGenerationService.generationState.collect { state ->
                 when (state) {
-                    is GenerationState.Success -> {
+                    is GenerationState.Complete -> {
                         batchQueueManager.updateItemStatus(nextItem.id, BatchItemStatus.COMPLETED)
                         return@collect
                     }
