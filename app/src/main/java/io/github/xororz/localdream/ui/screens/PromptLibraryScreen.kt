@@ -385,6 +385,7 @@ fun PresetListItem(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePresetDialog(
     preset: PromptPresetEntity? = null,
