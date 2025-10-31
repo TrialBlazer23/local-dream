@@ -48,7 +48,8 @@ Before building, ensure you have the following installed:
 6. **Qualcomm QNN SDK 2.39**
    - Download from: https://apigwx-aws.qualcomm.com/qsc/public/v1/api/download/software/sdks/Qualcomm_AI_Runtime_Community/All/2.39.0.250926/v2.39.0.250926.zip
    - Extract to a known location
-   - Update `QNN_SDK_ROOT` in `app/src/main/cpp/CMakeLists.txt` with the path
+   - Update `QNN_SDK_ROOT` in `app/src/main/cpp/CMakeLists.txt` with the path (for native build)
+   - Copy QNN runtime assets into `app/src/main/assets/qnnlibs` (see below)
 
 ## Build Steps
 
@@ -92,6 +93,23 @@ dos2unix SampleApp.patch
 ```
 
 ### Step 4: Build the APK
+### Step 3.5 (Recommended): Prepare QNN runtime assets
+
+To run on Snapdragon NPU, the app packages QNN runtime libraries under `app/src/main/assets/qnnlibs/` and extracts them at runtime.
+
+We’ve provided a helper script to copy the required files from your local QNN SDK:
+
+```bash
+export QNN_SDK_ROOT=/absolute/path/to/QNN_SDK
+./scripts/prepare-qnn-assets.sh
+```
+
+This will place files like `libQnnHtp.so`, `libQnnSystem.so`, and the Hexagon HTP skel libraries into the assets folder. See `app/src/main/assets/qnnlibs/README.md` for the complete list and details.
+
+Notes:
+- If you only plan to use CPU models, you can skip this step.
+- On-device, the app sets LD_LIBRARY_PATH and DSP_LIBRARY_PATH to point to these libs.
+
 
 #### Option A: Using Android Studio (Recommended)
 1. Open Android Studio

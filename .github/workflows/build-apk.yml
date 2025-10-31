@@ -42,12 +42,15 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ninja-build cmake
         
-    # Note: QNN SDK is required but needs to be manually provided
-    # This step is commented out as it requires credentials/access
-    # - name: Download and setup QNN SDK
-    #   run: |
-    #     # Download QNN SDK 2.39 and extract
-    #     # Set QNN_SDK_ROOT environment variable
+  # Note: QNN SDK is required but needs to be manually provided
+  # Optional: If you have access to QNN SDK, uncomment the next steps and
+  #           set QNN_SDK_ROOT (e.g., via GitHub Environments/Secrets).
+  # - name: Prepare QNN runtime assets
+  #   env:
+  #     QNN_SDK_ROOT: ${{ secrets.QNN_SDK_ROOT }}
+  #   run: |
+  #     chmod +x scripts/prepare-qnn-assets.sh
+  #     ./scripts/prepare-qnn-assets.sh
         
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew

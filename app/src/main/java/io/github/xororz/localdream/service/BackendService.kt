@@ -146,6 +146,9 @@ class BackendService : Service() {
 
             try {
                 val qnnlibsAssets = assets.list("qnnlibs")
+                if (qnnlibsAssets.isNullOrEmpty()) {
+                    Log.w(TAG, "No QNN runtime assets packaged (assets/qnnlibs is empty or missing). NPU backend may be unavailable.")
+                }
                 qnnlibsAssets?.forEach { fileName ->
                     val targetLib = File(runtimeDir, fileName)
 
@@ -230,6 +233,62 @@ class BackendService : Service() {
             var clipfilename = "clip.bin"
             if (model.useCpuClip) {
                 clipfilename = "clip.mnn"
+            }
+            // Preflight checks for required files before launching the backend
+            fun requireFilesExist(files: List<File>): List<File> {
+                return files.filter { !it.exists() }
+            }
+
+            if (!model.runOnCpu) {
+                // NPU path requires QNN runtime libraries to be present
+                val qnnLib = File(runtimeDir, "libQnnHtp.so")
+                val qnnSys = File(runtimeDir, "libQnnSystem.so")
+                val missingQnn = requireFilesExist(listOf(qnnLib, qnnSys))
+                if (missingQnn.isNotEmpty()) {
+                    val msg = "Missing QNN runtime libraries: " + missingQnn.joinToString { it.name } +
+                            ". Please build/package QNN SDK libs (assets/qnnlibs) or use a CPU model variant (e.g. anythingv5cpu)."
+                    Log.e(TAG, msg)
+                    updateState(BackendState.Error(msg))
+                    return false
+                }
+
+                // Check model files for NPU path
+                val requiredModelFiles = mutableListOf(
+                    File(modelsDir, clipfilename),
+                    File(modelsDir, "unet.bin"),
+                    File(modelsDir, "vae_decoder.bin"),
+                    File(modelsDir, "tokenizer.json")
+                )
+                if (useImg2img) {
+                    requiredModelFiles += File(modelsDir, "vae_encoder.bin")
+                }
+                val missingModelFiles = requireFilesExist(requiredModelFiles)
+                if (missingModelFiles.isNotEmpty()) {
+                    val msg = "Missing model files: " + missingModelFiles.joinToString { it.name } +
+                            ". Please download the model completely in the Models screen."
+                    Log.e(TAG, msg)
+                    updateState(BackendState.Error(msg))
+                    return false
+                }
+            } else {
+                // CPU path requires MNN models
+                val requiredCpuFiles = mutableListOf(
+                    File(modelsDir, "clip.mnn"),
+                    File(modelsDir, "unet.mnn"),
+                    File(modelsDir, "vae_decoder.mnn"),
+                    File(modelsDir, "tokenizer.json")
+                )
+                if (useImg2img) {
+                    requiredCpuFiles += File(modelsDir, "vae_encoder.mnn")
+                }
+                val missingCpuFiles = requireFilesExist(requiredCpuFiles)
+                if (missingCpuFiles.isNotEmpty()) {
+                    val msg = "Missing CPU model files: " + missingCpuFiles.joinToString { it.name } +
+                            ". Please download the CPU model variant completely in the Models screen."
+                    Log.e(TAG, msg)
+                    updateState(BackendState.Error(msg))
+                    return false
+                }
             }
             var command = listOf(
                 executableFile.absolutePath,

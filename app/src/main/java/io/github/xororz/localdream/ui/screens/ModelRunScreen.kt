@@ -754,6 +754,23 @@ fun ModelRunScreen(
         }
     }
 
+    // Surface detailed backend errors (from BackendService) to the UI
+    LaunchedEffect(backendState) {
+        when (val state = backendState) {
+            is BackendService.BackendState.Error -> {
+                errorMessage = state.message
+                isRunning = false
+            }
+            is BackendService.BackendState.Running -> {
+                // Clear any previous errors once backend is healthy
+                if (errorMessage?.isNotEmpty() == true) {
+                    errorMessage = null
+                }
+            }
+            else -> {}
+        }
+    }
+
     BackHandler {
         if (isRunning) {
             showExitDialog = true
@@ -921,7 +938,10 @@ fun ModelRunScreen(
             onUnhealthy = {
                 isBackendReady = false
                 isCheckingBackend = false
-                errorMessage = context.getString(R.string.backend_failed)
+                // Only set generic error if we don't already have a detailed one from BackendService
+                if (errorMessage.isNullOrEmpty()) {
+                    errorMessage = context.getString(R.string.backend_failed)
+                }
             }
         )
     }
