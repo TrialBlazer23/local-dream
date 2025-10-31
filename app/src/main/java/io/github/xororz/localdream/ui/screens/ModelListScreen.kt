@@ -976,6 +976,9 @@ fun ModelListScreen(
                     // Theme settings section
                     item {
                         var showThemeDialog by remember { mutableStateOf(false) }
+                        val themePreferences = remember { ThemePreferences(context) }
+                        val currentTheme by themePreferences.currentTheme.collectAsState(initial = AppTheme.SYSTEM)
+                        val useDynamicColor by themePreferences.useDynamicColor.collectAsState(initial = true)
                         
                         Column {
                             Row(
@@ -1032,6 +1035,9 @@ fun ModelListScreen(
                         
                         if (showThemeDialog) {
                             ThemeSettingsDialog(
+                                themePreferences = themePreferences,
+                                currentTheme = currentTheme,
+                                useDynamicColor = useDynamicColor,
                                 onDismiss = { showThemeDialog = false }
                             )
                         }
@@ -1095,7 +1101,7 @@ fun ModelListScreen(
                         }
                         
                         if (showExportDialog) {
-                            val exportPreferences = remember { ExportPreferences(LocalContext.current) }
+                            val exportPreferences = remember { ExportPreferences(context) }
                             val exportSettings by exportPreferences.exportSettings.collectAsState(
                                 initial = ExportSettings()
                             )
