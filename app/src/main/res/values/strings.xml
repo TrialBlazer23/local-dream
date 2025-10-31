@@ -269,7 +269,7 @@
     <string name="theme_amoled_desc">Pure black theme for OLED displays</string>
     <string name="theme_system">System Default</string>
     <string name="theme_system_desc">Follow system theme settings</string>
-        <string name="dynamic_color">Dynamic Color</string>
+    <string name="dynamic_color">Dynamic Color</string>
     <string name="dynamic_color_desc">Use colors from wallpaper (Android 12+)</string>
     
     <!-- Batch Generation -->
